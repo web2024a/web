@@ -1,17 +1,21 @@
 import { yupResolver } from '@hookform/resolvers/yup'
 import { useMutation } from '@tanstack/react-query'
+import { useContext } from 'react'
 import { useForm } from 'react-hook-form'
-import { Link } from 'react-router-dom'
-import authApi from '../../apis/auth.api'
-import Button from '../../components/Button'
-import Input from '../../components/Input'
-import { ErrorResponse } from '../../types/utils.type'
+import { Link, useNavigate } from 'react-router-dom'
 import { schema, Schema } from '../../utils/rules'
+import authApi from '../../apis/auth.api'
 import { isAxiosUnprocessableEntityError } from '../../utils/utils'
+import { ErrorResponse } from '../../types/utils.type'
+import Input from '../../components/Input'
+import Button from '../../components/Button'
+import { AppContext } from '../../context/app.context'
 
-type FormData = Pick<Schema, 'email' | 'password'>
-const loginSchema = schema.pick(['email', 'password'])
+type FormData = Pick<Schema, 'email'|'password'>
+const loginSchema = schema.pick(['email','password'])
 export default function Login() {
+  const { setIsAuthenticated, setProfile } = useContext(AppContext)
+  const navigate = useNavigate()
   const {
     register,
     handleSubmit,
@@ -27,7 +31,15 @@ export default function Login() {
   const onSubmit = handleSubmit((data) => {
     loginMutation.mutate(data, {
       onSuccess: (data) => {
-        console.log(data)
+        const user=data.data.data.user 
+        setIsAuthenticated(true)
+        setProfile(user)
+        if(user.roles.includes('Admin')){
+          navigate('/admin/products')
+        }
+        else{
+          navigate('/')
+        }
       },
       onError: (error) => {
         if (isAxiosUnprocessableEntityError<ErrorResponse<FormData>>(error)) {
