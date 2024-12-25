@@ -1,3 +1,4 @@
+import { userOrderRouter } from "./order.routes";
 import { userPurchaseRouter } from "./purchase.route";
 import { userUserRouter } from "./user-user.route";
 
@@ -11,7 +12,11 @@ const userRoutes = {
     {
       path: 'purchases',
       route: userPurchaseRouter
-    }
+    },
+    {
+      path: 'orders',
+      route: userOrderRouter,
+    },
   ]
 }
 

@@ -1,5 +1,6 @@
 import { body } from 'express-validator'
 import { isMongoId } from '../utils/validate'
+import helpersMiddleware from './helpers.middleware'
 
 export const buyProductsRules = () => {
   return [
@@ -62,3 +63,40 @@ export const deletePurchasesRules = () => {
       .withMessage('body phải là array id'),
   ]
 }
+export const updatePaymentStatusRules = () => [
+  body('purchase_id')
+    .isMongoId()
+    .withMessage('ID đơn hàng không đúng định dạng')
+    .notEmpty()
+    .withMessage('ID đơn hàng là bắt buộc'),
+  body('payment_status')
+    .isString()
+    .withMessage('Trạng thái thanh toán phải là chuỗi')
+    .isIn(['PENDING', 'PAID', 'FAILED'])
+    .withMessage('Trạng thái thanh toán không hợp lệ')
+    .notEmpty()
+    .withMessage('Trạng thái thanh toán là bắt buộc'),
+]
+
+export const createPaymentRules = () => [
+  body('amount')
+    .isNumeric()
+    .withMessage('Số tiền phải là số')
+    .notEmpty()
+    .withMessage('Số tiền không được để trống'),
+  body('description')
+    .isString()
+    .withMessage('Mô tả phải là chuỗi')
+    .notEmpty()
+    .withMessage('Mô tả không được để trống'),
+  body('orderId')
+    .isString()
+    .withMessage('Mã đơn hàng phải là chuỗi')
+    .notEmpty()
+    .withMessage('Mã đơn hàng không được để trống'),
+];
+
+export const validatePaymentRequest = [
+  ...createPaymentRules(),
+  helpersMiddleware.entityValidator,
+];

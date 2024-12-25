@@ -53,16 +53,7 @@ const addUser = async (req: Request, res: Response) => {
   throw new ErrorHandler(422, { email: 'Email đã tồn tại' })
 }
 
-const getUsers = async (req: Request, res: Response) => {
-  const usersDB = await UserModel.find({})
-    .select({ password: 0, __v: 0 })
-    .lean()
-  const response = {
-    message: 'Lấy người dùng thành công',
-    data: usersDB,
-  }
-  return responseSuccess(res, response)
-}
+
 
 const getDetailMySelf = async (req: Request, res: Response) => {
   const userDB = await UserModel.findById(req.jwtDecoded.id)
@@ -179,6 +170,16 @@ const updateMe = async (req: Request, res: Response) => {
   const response = {
     message: 'Cập nhật thông tin thành công',
     data: updatedUserDB,
+  }
+  return responseSuccess(res, response)
+}
+const getUsers = async (req: Request, res: Response) => {
+  const usersDB = await UserModel.find({})
+    .select({ password: 0, __v: 0 })
+    .lean()
+  const response = {
+    message: 'Lấy người dùng thành công',
+    data: usersDB,
   }
   return responseSuccess(res, response)
 }

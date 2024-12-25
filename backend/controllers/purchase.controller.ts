@@ -1,11 +1,11 @@
 import { Request, Response } from 'express'
+import { cloneDeep } from 'lodash'
 import { STATUS_PURCHASE } from '../constants/purchase'
 import { STATUS } from '../constants/status'
 import { ProductModel } from '../database/models/product.model'
 import { PurchaseModel } from '../database/models/purchase.model'
 import { ErrorHandler, responseSuccess } from '../utils/response'
 import { handleImageProduct } from './product.controller'
-import { cloneDeep } from 'lodash'
 
 export const addToCart = async (req: Request, res: Response) => {
   const { product_id, buy_count } = req.body
@@ -14,7 +14,7 @@ export const addToCart = async (req: Request, res: Response) => {
     if (buy_count > product.quantity) {
       throw new ErrorHandler(
         STATUS.NOT_ACCEPTABLE,
-        'Số lượng vượt quá số lượng sản phẩm'
+        'Số lượng vượt quá số lượng sản phẩm',
       )
     }
     const purchaseInDb: any = await PurchaseModel.findOne({
@@ -44,7 +44,7 @@ export const addToCart = async (req: Request, res: Response) => {
         },
         {
           new: true,
-        }
+        },
       )
         .populate({
           path: 'product',
@@ -100,7 +100,7 @@ export const updatePurchase = async (req: Request, res: Response) => {
     if (buy_count > purchaseInDb.product.quantity) {
       throw new ErrorHandler(
         STATUS.NOT_ACCEPTABLE,
-        'Số lượng vượt quá số lượng sản phẩm'
+        'Số lượng vượt quá số lượng sản phẩm',
       )
     }
     const data = await PurchaseModel.findOneAndUpdate(
@@ -116,7 +116,7 @@ export const updatePurchase = async (req: Request, res: Response) => {
       },
       {
         new: true,
-      }
+      },
     )
       .populate({
         path: 'product',
@@ -136,6 +136,7 @@ export const updatePurchase = async (req: Request, res: Response) => {
 }
 
 export const buyProducts = async (req: Request, res: Response) => {
+  const { address, phone,name_oder, items } = req.body
   const purchases = []
   for (const item of req.body) {
     const product: any = await ProductModel.findById(item.product_id).lean()
@@ -143,7 +144,7 @@ export const buyProducts = async (req: Request, res: Response) => {
       if (item.buy_count > product.quantity) {
         throw new ErrorHandler(
           STATUS.NOT_ACCEPTABLE,
-          'Số lượng mua vượt quá số lượng sản phẩm'
+          'Số lượng mua vượt quá số lượng sản phẩm',
         )
       } else {
         let data = await PurchaseModel.findOneAndUpdate(
@@ -157,10 +158,14 @@ export const buyProducts = async (req: Request, res: Response) => {
           {
             buy_count: item.buy_count,
             status: STATUS_PURCHASE.WAIT_FOR_CONFIRMATION,
+            address, // Lưu địa chỉ
+            phone, // Lưu số điện thoại
+            name_oder,
+         
           },
           {
             new: true,
-          }
+          },
         )
           .populate({
             path: 'product',
@@ -177,6 +182,10 @@ export const buyProducts = async (req: Request, res: Response) => {
             price: product.price,
             price_before_discount: product.price_before_discount,
             status: STATUS_PURCHASE.WAIT_FOR_CONFIRMATION,
+            address, // Lưu địa chỉ
+            phone, // Lưu số điện thoại
+            name_oder,
+            
           }
           const addedPurchase = await new PurchaseModel(purchase).save()
           data = await PurchaseModel.findById(addedPurchase._id).populate({
@@ -200,39 +209,38 @@ export const buyProducts = async (req: Request, res: Response) => {
 }
 
 export const getPurchases = async (req: Request, res: Response) => {
-  const { status = STATUS_PURCHASE.ALL } = req.query
-  const user_id = req.jwtDecoded.id
+  const { status = STATUS_PURCHASE.ALL } = req.query;
+  const user_id = req.jwtDecoded.id;
+
   let condition: any = {
     user: user_id,
-    status: {
-      $ne: STATUS_PURCHASE.ALL,
-    },
-  }
+    status: { $ne: STATUS_PURCHASE.ALL },
+  };
+  
   if (Number(status) !== STATUS_PURCHASE.ALL) {
-    condition.status = status
+    condition.status = status;
   }
 
   let purchases: any = await PurchaseModel.find(condition)
     .populate({
       path: 'product',
-      populate: {
-        path: 'category',
-      },
+      populate: { path: 'category' },
     })
-    .sort({
-      createdAt: -1,
-    })
-    .lean()
+    .sort({ createdAt: -1 })
+    .lean();
+
   purchases = purchases.map((purchase) => {
-    purchase.product = handleImageProduct(cloneDeep(purchase.product))
-    return purchase
-  })
+    purchase.product = handleImageProduct(cloneDeep(purchase.product));
+    return purchase;
+  });
+
   const response = {
     message: 'Lấy đơn mua thành công',
     data: purchases,
-  }
-  return responseSuccess(res, response)
-}
+  };
+  return responseSuccess(res, response);
+};
+
 
 export const deletePurchases = async (req: Request, res: Response) => {
   const purchase_ids = req.body
@@ -247,3 +255,57 @@ export const deletePurchases = async (req: Request, res: Response) => {
     data: { deleted_count: deletedData.deletedCount },
   })
 }
+export const adminUpdatePurchaseStatus = async (req: Request, res: Response) => {
+  const { purchase_id, status } = req.body;
+  
+  const purchase = await PurchaseModel.findById(purchase_id).lean();
+  
+  if (!purchase) {
+    throw new ErrorHandler(STATUS.NOT_FOUND, 'Không tìm thấy đơn hàng');
+  }
+  
+  if (![STATUS_PURCHASE.WAIT_FOR_CONFIRMATION, STATUS_PURCHASE.IN_PROGRESS].includes(status)) {
+    throw new ErrorHandler(STATUS.BAD_REQUEST, 'Trạng thái không hợp lệ');
+  }
+
+  const updatedPurchase = await PurchaseModel.findByIdAndUpdate(
+    purchase_id,
+    { status },
+    { new: true }
+  )
+    .populate({ path: 'product', populate: { path: 'category' } })
+    .lean();
+
+  const response = {
+    message: 'Cập nhật trạng thái đơn hàng thành công',
+    data: updatedPurchase,
+  };
+  return responseSuccess(res, response);
+};
+
+// controllers/purchase.controller.ts
+export const updatePaymentStatus = async (req: Request, res: Response) => {
+  const { purchase_id, payment_status } = req.body;
+  
+  const validStatuses = ['PENDING', 'PAID', 'FAILED'];
+  
+  if (!validStatuses.includes(payment_status)) {
+    throw new ErrorHandler(STATUS.BAD_REQUEST, 'Trạng thái thanh toán không hợp lệ');
+  }
+
+  const updatedPurchase = await PurchaseModel.findByIdAndUpdate(
+    purchase_id,
+    { payment_status },
+    { new: true }
+  ).lean();
+
+  if (!updatedPurchase) {
+    throw new ErrorHandler(STATUS.NOT_FOUND, 'Không tìm thấy đơn hàng');
+  }
+
+  const response = {
+    message: 'Cập nhật trạng thái thanh toán thành công',
+    data: updatedPurchase,
+  };
+  return responseSuccess(res, response);
+};

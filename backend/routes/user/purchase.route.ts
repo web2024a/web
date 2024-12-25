@@ -3,6 +3,7 @@ import authMiddleware from '../../middleware/auth.middleware'
 import helpersMiddleware from '../../middleware/helpers.middleware'
 import * as purchaseMiddleware from '../../middleware/purchase.middleware'
 import * as purchaseController from '../../controllers/purchase.controller'
+import * as paymentController from '../../controllers/payment.controller'
 import { wrapAsync } from '../../utils/response'
 
 export const userPurchaseRouter = Router()
@@ -38,9 +39,27 @@ userPurchaseRouter.delete(
   authMiddleware.verifyAccessToken,
   wrapAsync(purchaseController.deletePurchases)
 )
-
+userPurchaseRouter.post(
+  '/update-payment-status',
+  purchaseMiddleware.updatePaymentStatusRules(),
+  helpersMiddleware.entityValidator,
+  authMiddleware.verifyAccessToken,
+  wrapAsync(purchaseController.updatePaymentStatus)
+)
 userPurchaseRouter.get(
   '',
   authMiddleware.verifyAccessToken,
   wrapAsync(purchaseController.getPurchases)
 )
+
+// Callback từ ZaloPay
+userPurchaseRouter.post(
+  '/create-payment',
+  authMiddleware.verifyAccessToken,
+  wrapAsync(paymentController.createPayment)
+);
+
+userPurchaseRouter.post(
+  '/payment-callback',
+  wrapAsync(paymentController.handleCallback)
+);
