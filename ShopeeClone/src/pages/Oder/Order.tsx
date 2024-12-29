@@ -24,6 +24,7 @@ export default function Order() {
     queryFn: () => purchaseApi.getPurchases({ status: 0 }),
     enabled: Boolean(purchaseIds)
   })
+  console.log(purchasesData)
 
   const purchases = (purchasesData?.data.data || []).filter((purchase) => purchaseIds?.includes(purchase._id))
 
@@ -153,7 +154,7 @@ export default function Order() {
             value={paymentMethod}
             onChange={(e) => setPaymentMethod(e.target.value)}
           >
-            <option value=''>Chọn phương thức thanh toán</option>
+          
             <option value='zalo'>ZaloPay</option>
             <option value='cod'>Thanh toán khi nhận hàng</option>
           </select>

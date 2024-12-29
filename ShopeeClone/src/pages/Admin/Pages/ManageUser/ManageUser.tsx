@@ -8,7 +8,9 @@ export default function ManageUser() {
   const { data: usersData, isLoading } = useQuery({
     queryKey: ['users'],
     queryFn: () => adminProductApi.getUsers()
+    
   })
+  console.log(usersData)
 
   // Mutation để xóa người dùng
   const deleteUserMutation = useMutation({
@@ -19,11 +21,11 @@ export default function ManageUser() {
   })
 
   const handleDeleteUser = (userId: string) => {
-    if (window.confirm('Bạn có muốn xóa người user nàynày?')) {
+    if (window.confirm('Bạn có muốn xóa người user này?')) {
       deleteUserMutation.mutate(userId)
     }
   }
-
+  
   return (
     <div>
       {isLoading ? (
