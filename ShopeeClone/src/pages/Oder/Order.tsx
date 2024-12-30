@@ -2,10 +2,12 @@ import { useMutation, useQuery } from '@tanstack/react-query'
 import { useContext, useMemo, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { toast } from 'react-toastify'
+import paymentapi from 'src/apis/payment.api'
 import purchaseApi from 'src/apis/purchase.api'
 import Button from 'src/components/Button'
 import Input from 'src/components/Input'
 import { AppContext } from 'src/context/app.context'
+import http from 'src/utils/http'
 import { FormatCurrency } from 'src/utils/utils'
 
 export default function Order() {
@@ -14,9 +16,12 @@ export default function Order() {
   const { purchaseIds } = location.state || {}
   const [address, setAddress] = useState('')
   const [nameOrder, setNameOrder] = useState('')
-  const [paymentMethod, setPaymentMethod] = useState('')
+  const [paymentMethod, setPaymentMethod] = useState('cod') // Mặc định là 'COD'
   const [phone, setPhone] = useState('')
-
+  const [url, setUrl] = useState('')
+  const paymantmutation = useMutation({
+    mutationFn: paymentapi.postPaymant
+  })
   const checkedPurchases = useMemo(() => extendedPurchases.filter((purchase) => purchase.checked), [extendedPurchases])
 
   const { data: purchasesData } = useQuery({
@@ -24,7 +29,6 @@ export default function Order() {
     queryFn: () => purchaseApi.getPurchases({ status: 0 }),
     enabled: Boolean(purchaseIds)
   })
-  console.log(purchasesData)
 
   const purchases = (purchasesData?.data.data || []).filter((purchase) => purchaseIds?.includes(purchase._id))
 
@@ -40,7 +44,7 @@ export default function Order() {
     }
   })
 
-  const handleBuyPurchase = () => {
+  const handleBuyPurchase = async () => {
     if (!address.trim() || !nameOrder.trim() || !phone.trim()) {
       toast.error('Vui lòng nhập đầy đủ thông tin giao hàng!', {
         position: 'top-center',
@@ -50,40 +54,46 @@ export default function Order() {
     }
 
     if (checkedPurchases.length > 0) {
-      const body = checkedPurchases.map((purchase) => ({
-        product_id: purchase.product._id,
-        buy_count: purchase.buy_count,
-        address,
-        name_order: nameOrder,
-        phone
-      }))
+      // Tính toán tổng tiền và mô tả
+      const totalAmount = checkedPurchases.reduce(
+        (total, purchase) => total + purchase.product.price * purchase.buy_count,
+        0
+      )
+      const description = `Đơn hàng cho ${nameOrder} - ${checkedPurchases.length} sản phẩm`
 
-      if (paymentMethod === 'zalo') {
+      // Tạo body gửi API createPayment
+      const body = {
+        amount: totalAmount,
+        bankCode: 'NCB'
+        // orderId: new Date().getTime().toString(), // Hoặc có thể dùng một mã đơn hàng từ server
+      }
+
+      if (paymentMethod === 'vnp') {
         // Tạo đơn thanh toán ZaloPay
-        purchaseApi
-          .createPayment(body)
-          .then((response) => {
-            if (response.data.data.orderUrl) {
-              // Chuyển hướng người dùng tới ZaloPay để thanh toán
-              window.location.href = response.data.data.orderUrl
-            }
-          })
-          .catch((error) => {
-            toast.error('Thanh toán ZaloPay thất bại, vui lòng thử lại!', {
-              position: 'top-center',
-              autoClose: 2000
-            })
-          })
+        const result = await http.post('/payment/create_payment_url', body)
+        // setUrl(result.data.url as string)
+        window.location.href = result.data.url
+        // paymantmutation.mutate(body)
       } else {
         // Xử lý thanh toán khi nhận hàng hoặc các phương thức khác
-        buyProductMutation.mutate(body, {
-          onError: (error) => {
-            toast.error('Đặt hàng thất bại, vui lòng thử lại!', {
-              position: 'top-center',
-              autoClose: 2000
-            })
+
+        buyProductMutation.mutate(
+          checkedPurchases.map((purchase) => ({
+            product_id: purchase.product._id,
+            buy_count: purchase.buy_count,
+            address,
+            name_order: nameOrder,
+            phone
+          })),
+          {
+            onError: (error) => {
+              toast.error('Đặt hàng thất bại, vui lòng thử lại!', {
+                position: 'top-center',
+                autoClose: 2000
+              })
+            }
           }
-        })
+        )
       }
     } else {
       toast.warning('Bạn chưa chọn sản phẩm nào để đặt hàng!', {
@@ -154,8 +164,7 @@ export default function Order() {
             value={paymentMethod}
             onChange={(e) => setPaymentMethod(e.target.value)}
           >
-          
-            <option value='zalo'>ZaloPay</option>
+            <option value='vnp'>VNP</option>
             <option value='cod'>Thanh toán khi nhận hàng</option>
           </select>
         </div>

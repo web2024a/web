@@ -21,6 +21,7 @@ import Adminlayout from './pages/Admin/layouts/AdminLayout'
 import ManageUser from './pages/Admin/Pages/ManageUser'
 import AddProduct from './pages/Admin/Pages/AddProduct'
 import Oder from './pages/Oder'
+import PaymentSuccessPage from './pages/PaymentSuccessPage/PaymentSuccessPage'
 // function ProtectedRoute() {
 //   const { inAuthenticated } = useContext(AppContext)
 //   return inAuthenticated ? <Outlet /> : <Navigate to='/login' />
@@ -51,6 +52,12 @@ export default function useRouteElements() {
         <MainLayout>
           <ProductList />
         </MainLayout>
+      )
+    },
+    {
+      path: '/tc',
+      element: (
+        <PaymentSuccessPage/>
       )
     },
     {

@@ -28,14 +28,11 @@ const purchaseApi = {
       data: purchaseIds
     })
   },
-  createPaymenttt(body: { product_id: string; buy_count: number }[]) {
-    return http.post<SuccessResponse<Purchase[]>>(`${URL}/create-payment`, body)
-  },
-  createPayment(body: { product_id: string; buy_count: number }[]) {
+  createPayment(body: { amount: number; description: string; orderId: string }) {
     return http.post<SuccessResponse<CreatePaymentResponse>>(`${URL}/create-payment`, body);
   },
-  handleCallback(body: { product_id: string; buy_count: number }[]) {
-    return http.post<SuccessResponse<Purchase[]>>(`${URL}/payment-callback`, body)
+  handleCallback(body: { orderId: string; resultCode: number }) {
+    return http.post<SuccessResponse<{ status: string }>>(`${URL}/payment-callback`, body);
   },
 }
 export default purchaseApi
